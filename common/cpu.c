@@ -530,13 +530,13 @@ uint32_t x264_cpu_detect( void )
 }
 
 #elif HAVE_RVV
-#include <sys/auxv.h>
+
 #define RISCV_HWCAP_RVV   (1U << ('v' - 'a'))
 
 uint32_t x264_cpu_detect( void )
 {
     uint32_t flags = 0;
-    uint32_t hwcap = (uint32_t)getauxval( AT_HWCAP );
+    uint32_t hwcap = (uint32_t)x264_getauxval( AT_HWCAP );
 
     if( hwcap & RISCV_HWCAP_RVV )
         flags |= X264_CPU_RVV;

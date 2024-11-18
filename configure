@@ -871,8 +871,8 @@ case $host_cpu in
             AS="${AS-${CC}}"
         fi
         ;;
-    riscv*)
-        ARCH="RISCV"
+    riscv64*)
+        ARCH="RISCV64"
         AS="${AS-${CC}}"
         
         CFLAGS="-march=rv64gcv $CFLAGS"
@@ -1057,11 +1057,7 @@ if [ $asm = auto -a $ARCH = LOONGARCH ] ; then
     fi
 fi
 
-if [ $asm = auto -a $ARCH = RISCV ] ; then
-    if ! echo $CFLAGS | grep -Eq '(-march=|-mabi=)' ; then
-        CFLAGS="-march=rv64gc -mabi=lp64d $CFLAGS"
-    fi
-
+if [ $asm = auto -a $ARCH = RISCV64 ] ; then
     if cc_check '' '' '__asm__("vsetvli t0, a0, e32, m1, ta, ma");' ; then
         define HAVE_RVV
     fi

@@ -102,7 +102,7 @@ const x264_cpu_name_t x264_cpu_names[] =
 #elif ARCH_LOONGARCH
     {"LSX",             X264_CPU_LSX},
     {"LASX",            X264_CPU_LASX},
-#elif ARCH_RISCV
+#elif ARCH_RISCV64
     {"RVV",             X264_CPU_RVV},
 #endif
     {"", 0},

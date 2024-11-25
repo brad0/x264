@@ -234,7 +234,7 @@ endif
 endif
 
 # RISCV optimization
-ifeq ($(SYS_ARCH),RISCV)
+ifeq ($(SYS_ARCH),RISCV64)
 ifneq ($(findstring HAVE_RVV 1, $(CONFIG)),)
 SRCASM_X +=
 

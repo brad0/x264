@@ -33,9 +33,9 @@
 /* Transition and size tables for abs<9 MVD and residual coding */
 /* Consist of i_prefix-2 1s, one zero, and a bypass sign bit */
 #define x264_cabac_transition_unary x264_template(cabac_transition_unary)
-uint8_t x264_cabac_transition_unary[15][128];
+DECLARE_ASM(uint8_t x264_cabac_transition_unary[15][128]);
 #define x264_cabac_size_unary x264_template(cabac_size_unary)
-uint16_t x264_cabac_size_unary[15][128];
+DECLARE_ASM(uint16_t x264_cabac_size_unary[15][128]);
 /* Transition and size tables for abs>9 MVD */
 /* Consist of 5 1s and a bypass sign bit */
 static uint8_t cabac_transition_5ones[128];

@@ -363,6 +363,21 @@ static inline int x264_is_regular_file( FILE *filehandle )
 #define x264_nonconstant_p(x) 0
 #endif
 
+#ifdef __has_attribute
+#define HAS_ATTRIBUTE(x) __has_attribute(x)
+#else
+#define HAS_ATTRIBUTE(x) 0
+#endif
+
+#if ARCH_X86_64 && defined(__ELF__) && HAS_ATTRIBUTE(model)
+#define ATTR_MODEL_SMALL __attribute__((model("small")))
+#else
+#define ATTR_MODEL_SMALL
+#endif
+
+// Use DECLARE_ASM to declare variables that are accessed from hardcoded assembly
+#define DECLARE_ASM( var ) var ATTR_MODEL_SMALL
+
 /* threads */
 #if HAVE_BEOSTHREAD
 #include <kernel/OS.h>

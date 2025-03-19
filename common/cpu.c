@@ -104,6 +104,8 @@ const x264_cpu_name_t x264_cpu_names[] =
 #elif ARCH_LOONGARCH
     {"LSX",             X264_CPU_LSX},
     {"LASX",            X264_CPU_LASX},
+#elif ARCH_RISCV64
+    {"RVV",             X264_CPU_RVV},
 #endif
     {"", 0},
 };
@@ -592,6 +594,21 @@ uint32_t x264_cpu_detect( void )
         flags |= X264_CPU_LSX;
     if( hwcap & LA_HWCAP_LASX )
         flags |= X264_CPU_LASX;
+
+    return flags;
+}
+
+#elif HAVE_RVV
+
+#define RISCV_HWCAP_RVV   (1U << ('v' - 'a'))
+
+uint32_t x264_cpu_detect( void )
+{
+    uint32_t flags = 0;
+    uint32_t hwcap = (uint32_t)x264_getauxval( AT_HWCAP );
+
+    if( hwcap & RISCV_HWCAP_RVV )
+        flags |= X264_CPU_RVV;
 
     return flags;
 }

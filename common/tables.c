@@ -370,10 +370,12 @@ const uint8_t x264_cqm_avci300_2160p_8iy[64] =
  * QUANT
  *****************************************************************************/
 
+ATTR_MCMODEL_SMALL
 const uint8_t x264_decimate_table4[16] =
 {
     3,2,2,1,1,1,0,0,0,0,0,0,0,0,0,0
 };
+ATTR_MCMODEL_SMALL
 const uint8_t x264_decimate_table8[64] =
 {
     3,3,3,3,2,2,2,2,2,2,2,2,1,1,1,1,
@@ -1665,6 +1667,7 @@ const int8_t x264_cabac_context_init_PB[3][1024][2] =
     }
 };
 
+ATTR_MCMODEL_SMALL
 const uint8_t x264_cabac_range_lps[64][4] =
 {
     {  2,   2,   2,   2}, {  6,   7,   8,   9}, {  6,   7,   9,  10}, {  6,   8,   9,  11},
@@ -1685,6 +1688,7 @@ const uint8_t x264_cabac_range_lps[64][4] =
     {123, 150, 178, 205}, {128, 158, 187, 216}, {128, 167, 197, 227}, {128, 176, 208, 240}
 };
 
+ATTR_MCMODEL_SMALL
 const uint8_t x264_cabac_transition[128][2] =
 {
     {  0,   0}, {  1,   1}, {  2,  50}, { 51,   3}, {  2,  50}, { 51,   3}, {  4,  52}, { 53,   5},
@@ -1705,6 +1709,7 @@ const uint8_t x264_cabac_transition[128][2] =
     {118, 122}, {123, 119}, {120, 124}, {125, 121}, {122, 126}, {127, 123}, {124, 127}, {126, 125}
 };
 
+ATTR_MCMODEL_SMALL
 const uint8_t x264_cabac_renorm_shift[64] =
 {
     6,5,4,4,3,3,3,3,2,2,2,2,2,2,2,2,
@@ -1775,6 +1780,7 @@ const uint8_t x264_last_coeff_flag_offset_8x8[63] =
     5, 5, 5, 5, 6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8
 };
 const uint8_t x264_coeff_flag_offset_chroma_422_dc[7] = { 0, 0, 1, 1, 2, 2, 2 }; /* MIN( i/2, 2 ) */
+ATTR_MCMODEL_SMALL
 const uint16_t x264_significant_coeff_flag_offset[2][16] =
 {
     { 105+0, 105+15, 105+29, 105+44, 105+47, 402, 484+0, 484+15, 484+29, 660, 528+0, 528+15, 528+29, 718, 0, 0 },

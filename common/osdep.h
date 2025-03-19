@@ -363,6 +363,12 @@ static inline int x264_is_regular_file( FILE *filehandle )
 #define x264_nonconstant_p(x) 0
 #endif
 
+#if ARCH_X86_64 && SYS_LINUX && __has_attribute(model)
+#define ATTR_MCMODEL_SMALL __attribute__((model("small")))
+#else
+#define ATTR_MCMODEL_SMALL
+#endif
+
 /* threads */
 #if HAVE_BEOSTHREAD
 #include <kernel/OS.h>

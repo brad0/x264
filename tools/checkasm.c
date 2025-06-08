@@ -120,6 +120,8 @@ static inline uint32_t read_time(void)
 #elif ARCH_LOONGARCH
     uint32_t id = 0;
     asm volatile( "rdtimel.w  %0, %1" : "=r"(a), "=r"(id) :: "memory" );
+#elif ARCH_RISCV64
+    asm volatile( "rdtime %0" : "=r"(a) :: "memory" );
 #endif
     return a;
 }
@@ -225,6 +227,8 @@ static void print_bench(void)
 #elif ARCH_LOONGARCH
                     b->cpu&X264_CPU_LASX ? "lasx" :
                     b->cpu&X264_CPU_LSX ? "lsx" :
+#elif ARCH_RISCV64
+                    b->cpu&X264_CPU_RVV ? "rvv" :
 #endif
                     "c",
 #if ARCH_X86 || ARCH_X86_64
@@ -3022,6 +3026,9 @@ static int check_all_flags( void )
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_LSX, "LSX" );
     if( cpu_detect & X264_CPU_LASX )
         ret |= add_flags( &cpu0, &cpu1, X264_CPU_LASX, "LASX" );
+#elif ARCH_RISCV64
+    if( cpu_detect & X264_CPU_RVV )
+        ret |= add_flags( &cpu0, &cpu1, X264_CPU_RVV, "RVV" );
 #endif
     return ret;
 }
@@ -3035,7 +3042,7 @@ REALIGN_STACK int main( int argc, char **argv )
 
     if( argc > 1 && !strncmp( argv[1], "--bench", 7 ) )
     {
-#if !ARCH_X86 && !ARCH_X86_64 && !ARCH_PPC && !ARCH_ARM && !ARCH_AARCH64 && !ARCH_MIPS && !ARCH_LOONGARCH
+#if !ARCH_X86 && !ARCH_X86_64 && !ARCH_PPC && !ARCH_ARM && !ARCH_AARCH64 && !ARCH_MIPS && !ARCH_LOONGARCH && !ARCH_RISCV64
         fprintf( stderr, "no --bench for your cpu until you port rdtsc\n" );
         return 1;
 #endif

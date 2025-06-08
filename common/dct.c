@@ -710,7 +710,6 @@ void x264_dct_init( uint32_t cpu, x264_dct_function_t *dctf )
 #if HAVE_SVE
     if ( cpu&X264_CPU_SVE )
     {
-        dctf->sub4x4_dct    = x264_sub4x4_dct_sve;
     }
 #endif
 #if HAVE_SVE2

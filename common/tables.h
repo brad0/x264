@@ -27,6 +27,8 @@
 #ifndef X264_TABLES_H
 #define X264_TABLES_H
 
+#include "osdep.h"
+
 typedef struct
 {
     uint8_t i_bits;
@@ -67,28 +69,28 @@ extern const uint8_t x264_cqm_avci300_2160p_4iy[16];
 extern const uint8_t x264_cqm_avci300_2160p_4ic[16];
 extern const uint8_t x264_cqm_avci300_2160p_8iy[64];
 
-extern const uint8_t x264_decimate_table4[16];
-extern const uint8_t x264_decimate_table8[64];
+extern DECLARE_ASM(const uint8_t x264_decimate_table4[16]);
+extern DECLARE_ASM(const uint8_t x264_decimate_table8[64]);
 
-extern const uint32_t x264_dct4_weight_tab[16];
-extern const uint32_t x264_dct8_weight_tab[64];
-extern const uint32_t x264_dct4_weight2_tab[16];
-extern const uint32_t x264_dct8_weight2_tab[64];
+extern DECLARE_ASM(const uint32_t x264_dct4_weight_tab[16]);
+extern DECLARE_ASM(const uint32_t x264_dct8_weight_tab[64]);
+extern DECLARE_ASM(const uint32_t x264_dct4_weight2_tab[16]);
+extern DECLARE_ASM(const uint32_t x264_dct8_weight2_tab[64]);
 
 extern const int8_t   x264_cabac_context_init_I[1024][2];
 extern const int8_t   x264_cabac_context_init_PB[3][1024][2];
-extern const uint8_t  x264_cabac_range_lps[64][4];
-extern const uint8_t  x264_cabac_transition[128][2];
-extern const uint8_t  x264_cabac_renorm_shift[64];
-extern const uint16_t x264_cabac_entropy[128];
+extern DECLARE_ASM(const uint8_t  x264_cabac_range_lps[64][4]);
+extern DECLARE_ASM(const uint8_t  x264_cabac_transition[128][2]);
+extern DECLARE_ASM(const uint8_t  x264_cabac_renorm_shift[64]);
+extern DECLARE_ASM(const uint16_t x264_cabac_entropy[128]);
 
-extern const uint8_t  x264_significant_coeff_flag_offset_8x8[2][64];
-extern const uint8_t  x264_last_coeff_flag_offset_8x8[63];
-extern const uint8_t  x264_coeff_flag_offset_chroma_422_dc[7];
-extern const uint16_t x264_significant_coeff_flag_offset[2][16];
-extern const uint16_t x264_last_coeff_flag_offset[2][16];
-extern const uint16_t x264_coeff_abs_level_m1_offset[16];
-extern const uint8_t  x264_count_cat_m1[14];
+extern DECLARE_ASM(const uint8_t  x264_significant_coeff_flag_offset_8x8[2][64]);
+extern DECLARE_ASM(const uint8_t  x264_last_coeff_flag_offset_8x8[63]);
+extern DECLARE_ASM(const uint8_t  x264_coeff_flag_offset_chroma_422_dc[7]);
+extern DECLARE_ASM(const uint16_t x264_significant_coeff_flag_offset[2][16]);
+extern DECLARE_ASM(const uint16_t x264_last_coeff_flag_offset[2][16]);
+extern DECLARE_ASM(const uint16_t x264_coeff_abs_level_m1_offset[16]);
+extern DECLARE_ASM(const uint8_t  x264_count_cat_m1[14]);
 
 extern const vlc_t x264_coeff0_token[6];
 extern const vlc_t x264_coeff_token[6][16][4];

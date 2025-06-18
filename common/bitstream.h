@@ -218,6 +218,17 @@ static const uint8_t x264_ue_size_tab[256] =
     15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
 };
 
+#if 0
+static inline uint8_t mylog2(int value) {
+        return x264_ue_size_tab[value];
+}
+#else
+static inline uint8_t mylog2(int value) {
+        uint8_t power = 63 - __builtin_clzll(value | 1);
+        return (power << 1) + 1;
+}
+#endif
+
 static inline void bs_write_ue_big( bs_t *s, unsigned int val )
 {
     int size = 0;
@@ -232,7 +243,7 @@ static inline void bs_write_ue_big( bs_t *s, unsigned int val )
         size += 16;
         tmp >>= 8;
     }
-    size += x264_ue_size_tab[tmp];
+    size += mylog2(tmp);
     bs_write( s, size>>1, 0 );
     bs_write( s, (size>>1)+1, val );
 }
@@ -240,7 +251,7 @@ static inline void bs_write_ue_big( bs_t *s, unsigned int val )
 /* Only works on values under 255. */
 static inline void bs_write_ue( bs_t *s, int val )
 {
-    bs_write( s, x264_ue_size_tab[val+1], val+1 );
+    bs_write( s, mylog2(val+1), val+1 );
 }
 
 static inline void bs_write_se( bs_t *s, int val )
@@ -257,7 +268,7 @@ static inline void bs_write_se( bs_t *s, int val )
         size = 16;
         tmp >>= 8;
     }
-    size += x264_ue_size_tab[tmp];
+    size += mylog2(tmp);
     bs_write( s, size, val );
 }
 
@@ -277,15 +288,15 @@ static inline void bs_rbsp_trailing( bs_t *s )
 
 static ALWAYS_INLINE int bs_size_ue( unsigned int val )
 {
-    return x264_ue_size_tab[val+1];
+    return mylog2(val+1);
 }
 
 static ALWAYS_INLINE int bs_size_ue_big( unsigned int val )
 {
     if( val < 255 )
-        return x264_ue_size_tab[val+1];
+        return mylog2(val+1);
     else
-        return x264_ue_size_tab[(val+1)>>8] + 16;
+        return mylog2((val+1)>>8) + 16;
 }
 
 static ALWAYS_INLINE int bs_size_se( int val )
@@ -293,9 +304,9 @@ static ALWAYS_INLINE int bs_size_se( int val )
     int tmp = 1 - val*2;
     if( tmp < 0 ) tmp = val*2;
     if( tmp < 256 )
-        return x264_ue_size_tab[tmp];
+        return mylog2(tmp);
     else
-        return x264_ue_size_tab[tmp>>8]+16;
+        return mylog2(tmp>>8)+16;
 }
 
 static ALWAYS_INLINE int bs_size_te( int x, int val )
@@ -303,7 +314,7 @@ static ALWAYS_INLINE int bs_size_te( int x, int val )
     if( x == 1 )
         return 1;
     else //if( x > 1 )
-        return x264_ue_size_tab[val+1];
+        return mylog2(val+1);
 }
 
 #endif

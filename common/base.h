@@ -229,6 +229,11 @@ static ALWAYS_INLINE float x264_log2( uint32_t x )
     return x264_log2_lut[(x<<lz>>24)&0x7f] + x264_log2_lz_lut[lz];
 }
 
+static inline uint8_t x264_log2_u8(uint32_t value) {
+        uint8_t power = 31 - x264_clz(value | 1);
+        return (power << 1) + 1;
+}
+
 static ALWAYS_INLINE int x264_median( int a, int b, int c )
 {
     int t = (a-b)&((a-b)>>31);

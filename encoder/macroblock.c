@@ -97,18 +97,15 @@ static inline void dct2x2dc( dctcoef d[4], dctcoef dct4x4[4][16] )
 
 static ALWAYS_INLINE int array_non_zero( dctcoef *v, int i_count )
 {
-    if( WORD_SIZE == 8 )
-    {
-        for( int i = 0; i < i_count; i += 8/sizeof(dctcoef) )
-            if( M64( &v[i] ) )
-                return 1;
-    }
-    else
-    {
-        for( int i = 0; i < i_count; i += 4/sizeof(dctcoef) )
-            if( M32( &v[i] ) )
-                return 1;
-    }
+#if WORD_SIZE == 8
+    for( int i = 0; i < i_count; i += 8/sizeof(dctcoef) )
+        if( M64( &v[i] ) )
+            return 1;
+#else
+    for( int i = 0; i < i_count; i += 4/sizeof(dctcoef) )
+        if( M32( &v[i] ) )
+            return 1;
+#endif // WORD_SIZE == 8
     return 0;
 }
 

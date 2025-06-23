@@ -53,28 +53,25 @@ static ALWAYS_INLINE void x264_macroblock_cache_rect( void *dst, int w, int h, i
     }
     else if( w == 8 )
     {
-        if( WORD_SIZE == 8 )
-        {
-            M64( d+s*0 ) = v8;
-            if( h == 1 ) return;
-            M64( d+s*1 ) = v8;
-            if( h == 2 ) return;
-            M64( d+s*2 ) = v8;
-            M64( d+s*3 ) = v8;
-        }
-        else
-        {
-            M32( d+s*0+0 ) = v4;
-            M32( d+s*0+4 ) = v4;
-            if( h == 1 ) return;
-            M32( d+s*1+0 ) = v4;
-            M32( d+s*1+4 ) = v4;
-            if( h == 2 ) return;
-            M32( d+s*2+0 ) = v4;
-            M32( d+s*2+4 ) = v4;
-            M32( d+s*3+0 ) = v4;
-            M32( d+s*3+4 ) = v4;
-        }
+#if WORD_SIZE == 8
+        M64( d+s*0 ) = v8;
+        if( h == 1 ) return;
+        M64( d+s*1 ) = v8;
+        if( h == 2 ) return;
+        M64( d+s*2 ) = v8;
+        M64( d+s*3 ) = v8;
+#else
+        M32( d+s*0+0 ) = v4;
+        M32( d+s*0+4 ) = v4;
+        if( h == 1 ) return;
+        M32( d+s*1+0 ) = v4;
+        M32( d+s*1+4 ) = v4;
+        if( h == 2 ) return;
+        M32( d+s*2+0 ) = v4;
+        M32( d+s*2+4 ) = v4;
+        M32( d+s*3+0 ) = v4;
+        M32( d+s*3+4 ) = v4;
+#endif // WORD_SIZE == 8
     }
     else if( w == 16 )
     {
@@ -89,29 +86,26 @@ static ALWAYS_INLINE void x264_macroblock_cache_rect( void *dst, int w, int h, i
         M128( d+s*2+0 ) = (__m128)v16;
         M128( d+s*3+0 ) = (__m128)v16;
 #else
-        if( WORD_SIZE == 8 )
+#if WORD_SIZE == 8
+        do
         {
-            do
-            {
-                M64( d+s*0+0 ) = v8;
-                M64( d+s*0+8 ) = v8;
-                M64( d+s*1+0 ) = v8;
-                M64( d+s*1+8 ) = v8;
-                h -= 2;
-                d += s*2;
-            } while( h );
-        }
-        else
+            M64( d+s*0+0 ) = v8;
+            M64( d+s*0+8 ) = v8;
+            M64( d+s*1+0 ) = v8;
+            M64( d+s*1+8 ) = v8;
+            h -= 2;
+            d += s*2;
+        } while( h );
+#else
+        do
         {
-            do
-            {
-                M32( d+ 0 ) = v4;
-                M32( d+ 4 ) = v4;
-                M32( d+ 8 ) = v4;
-                M32( d+12 ) = v4;
-                d += s;
-            } while( --h );
-        }
+            M32( d+ 0 ) = v4;
+            M32( d+ 4 ) = v4;
+            M32( d+ 8 ) = v4;
+            M32( d+12 ) = v4;
+            d += s;
+        } while( --h );
+#endif // WORD_SIZE == 8
 #endif
     }
     else

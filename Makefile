@@ -197,7 +197,7 @@ endif
 # RISCV64 RVV optims
 ifeq ($(SYS_ARCH),RISCV64)
 ifneq ($(findstring HAVE_RVV 1, $(CONFIG)),)
-SRCASM_X =
+SRCASM_X = common/riscv64/bitstream-a.S
 
 SRCS_X  +=
 
@@ -209,7 +209,7 @@ ifneq ($(findstring HAVE_BITDEPTH10 1, $(CONFIG)),)
 OBJASM += $(SRCASM_X:%.S=%-10.o)
 endif
 
-OBJCHK +=
+OBJCHK += tools/checkasm-riscv64.o
 endif
 endif
 

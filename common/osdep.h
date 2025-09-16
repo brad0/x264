@@ -449,7 +449,7 @@ static ALWAYS_INLINE int x264_pthread_fetch_and_add( int *val, int add, x264_pth
 #endif
 }
 
-#define WORD_SIZE sizeof(void*)
+#define WORD_SIZE __SIZEOF_POINTER__
 
 #define asm __asm__
 

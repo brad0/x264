@@ -124,38 +124,35 @@ static inline void bs_realign( bs_t *s )
 
 static inline void bs_write( bs_t *s, int i_count, uint32_t i_bits )
 {
-    if( WORD_SIZE == 8 )
+#if WORD_SIZE == 8
+    s->cur_bits = (s->cur_bits << i_count) | i_bits;
+    s->i_left -= i_count;
+    if( s->i_left <= 32 )
+    {
+#if WORDS_BIGENDIAN
+        M32( s->p ) = s->cur_bits >> (32 - s->i_left);
+#else
+        M32( s->p ) = endian_fix( s->cur_bits << s->i_left );
+#endif
+        s->i_left += 32;
+        s->p += 4;
+    }
+#else
+    if( i_count < s->i_left )
     {
         s->cur_bits = (s->cur_bits << i_count) | i_bits;
         s->i_left -= i_count;
-        if( s->i_left <= 32 )
-        {
-#if WORDS_BIGENDIAN
-            M32( s->p ) = s->cur_bits >> (32 - s->i_left);
-#else
-            M32( s->p ) = endian_fix( s->cur_bits << s->i_left );
-#endif
-            s->i_left += 32;
-            s->p += 4;
-        }
     }
     else
     {
-        if( i_count < s->i_left )
-        {
-            s->cur_bits = (s->cur_bits << i_count) | i_bits;
-            s->i_left -= i_count;
-        }
-        else
-        {
-            i_count -= s->i_left;
-            s->cur_bits = (s->cur_bits << s->i_left) | (i_bits >> i_count);
-            M32( s->p ) = endian_fix( s->cur_bits );
-            s->p += 4;
-            s->cur_bits = i_bits;
-            s->i_left = 32 - i_count;
-        }
+        i_count -= s->i_left;
+        s->cur_bits = (s->cur_bits << s->i_left) | (i_bits >> i_count);
+        M32( s->p ) = endian_fix( s->cur_bits );
+        s->p += 4;
+        s->cur_bits = i_bits;
+        s->i_left = 32 - i_count;
     }
+#endif // WORD_SIZE == 8
 }
 
 /* Special case to eliminate branch in normal bs_write. */
@@ -198,25 +195,6 @@ static inline void bs_align_10( bs_t *s )
 
 /* golomb functions */
 
-static const uint8_t x264_ue_size_tab[256] =
-{
-     1, 1, 3, 3, 5, 5, 5, 5, 7, 7, 7, 7, 7, 7, 7, 7,
-     9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9,
-    11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,
-    11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,
-    13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
-    13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
-    13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
-    13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,13,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-    15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,
-};
 
 static inline void bs_write_ue_big( bs_t *s, unsigned int val )
 {
@@ -232,7 +210,7 @@ static inline void bs_write_ue_big( bs_t *s, unsigned int val )
         size += 16;
         tmp >>= 8;
     }
-    size += x264_ue_size_tab[tmp];
+    size += x264_log2_u8(tmp);
     bs_write( s, size>>1, 0 );
     bs_write( s, (size>>1)+1, val );
 }
@@ -240,7 +218,7 @@ static inline void bs_write_ue_big( bs_t *s, unsigned int val )
 /* Only works on values under 255. */
 static inline void bs_write_ue( bs_t *s, int val )
 {
-    bs_write( s, x264_ue_size_tab[val+1], val+1 );
+    bs_write( s, x264_log2_u8(val+1), val+1 );
 }
 
 static inline void bs_write_se( bs_t *s, int val )
@@ -257,7 +235,7 @@ static inline void bs_write_se( bs_t *s, int val )
         size = 16;
         tmp >>= 8;
     }
-    size += x264_ue_size_tab[tmp];
+    size += x264_log2_u8(tmp);
     bs_write( s, size, val );
 }
 
@@ -277,15 +255,15 @@ static inline void bs_rbsp_trailing( bs_t *s )
 
 static ALWAYS_INLINE int bs_size_ue( unsigned int val )
 {
-    return x264_ue_size_tab[val+1];
+    return x264_log2_u8(val+1);
 }
 
 static ALWAYS_INLINE int bs_size_ue_big( unsigned int val )
 {
     if( val < 255 )
-        return x264_ue_size_tab[val+1];
+        return x264_log2_u8(val+1);
     else
-        return x264_ue_size_tab[(val+1)>>8] + 16;
+        return x264_log2_u8((val+1)>>8) + 16;
 }
 
 static ALWAYS_INLINE int bs_size_se( int val )
@@ -293,9 +271,9 @@ static ALWAYS_INLINE int bs_size_se( int val )
     int tmp = 1 - val*2;
     if( tmp < 0 ) tmp = val*2;
     if( tmp < 256 )
-        return x264_ue_size_tab[tmp];
+        return x264_log2_u8(tmp);
     else
-        return x264_ue_size_tab[tmp>>8]+16;
+        return x264_log2_u8(tmp>>8)+16;
 }
 
 static ALWAYS_INLINE int bs_size_te( int x, int val )
@@ -303,7 +281,7 @@ static ALWAYS_INLINE int bs_size_te( int x, int val )
     if( x == 1 )
         return 1;
     else //if( x > 1 )
-        return x264_ue_size_tab[val+1];
+        return x264_log2_u8(val+1);
 }
 
 #endif

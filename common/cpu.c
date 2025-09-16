@@ -599,9 +599,22 @@ uint32_t x264_cpu_detect( void )
 
 #elif HAVE_MSA
 
+#define HWCAP_MIPS_MSA    (1U << 1)
+
 uint32_t x264_cpu_detect( void )
 {
+    uint32_t flags = 0;
+
+#if HAVE_GETAUXVAL || HAVE_ELF_AUX_INFO
+    unsigned long hwcap = x264_getauxval( AT_HWCAP );
+
+    if ( hwcap & HWCAP_MIPS_MSA )
+        flags |= X264_CPU_MSA;
+#else
     return X264_CPU_MSA;
+#endif
+
+    return flags;
 }
 
 #elif HAVE_LSX

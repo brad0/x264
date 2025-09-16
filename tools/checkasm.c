@@ -113,7 +113,7 @@ static inline uint32_t read_time(void)
     asm volatile( "mrc p15, 0, %0, c9, c13, 0" : "=r"(a) :: "memory" );
 #elif ARCH_AARCH64
     uint64_t b = 0;
-    asm volatile( "mrs %0, pmccntr_el0" : "=r"(b) :: "memory" );
+    asm volatile( "isb; mrs %0, cntvct_el0" : "=r"(b) :: "memory" );
     a = b;
 #elif ARCH_RISCV64
     asm volatile( "rdtime %0" : "=r"(a) :: "memory" );

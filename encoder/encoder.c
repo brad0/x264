@@ -1854,6 +1854,7 @@ x264_t *x264_encoder_open( x264_param_t *param, void *api )
 
     return h;
 fail:
+    x264_param_cleanup( &h->param );
     x264_free( h );
     return NULL;
 }

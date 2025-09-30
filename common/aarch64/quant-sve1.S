@@ -42,7 +42,13 @@ ENABLE_SVE2
  .global x264_cabac_size_unary
  .global x264_cabac_transition_unary
 
- .section .rodata
+#if defined(__APPLE__)
+    .const
+#elif defined(_WIN32)
+    .rdata
+#else
+    .section .rodata
+#endif
  .align 3
 
 x264_ue_size_tab:
@@ -109,8 +115,11 @@ x264_ue_size_tab:
 #define TMP_W2         W8
 #define TMP_W3         W18
 #define TMP_W6         W23
-
-.section .text
+#if defined(__APPLE__) || defined(_WIN32)
+    .text
+#else
+    .section .text
+#endif
 .macro  bs_size_ue_big_macro abs_level:req
     //--------------------------------------------------------------------
     // Macro: bs_size_ue_big_macro
@@ -966,9 +975,9 @@ q_not_two_vl128:
     // W24 was W_transition3
     lsr w24, w24, #8
     sub w13, w28, #1              // X13 (X_q_minus_1)
-    TRELLIS_COEFN_0_SVE_ 0 W13
+    TRELLIS_COEFN_0_SVE_ 0, W13
     // X28 was X_q
-    TRELLIS_COEFN_0_SVE_ 1 W28
+    TRELLIS_COEFN_0_SVE_ 1, W28
 
 phase2_switch_and_break_vl128:
     mov w13, #1                   // W13 (switch_to_phase2) = 1
@@ -1997,8 +2006,8 @@ q_gt_two_p2:
     lsr w24, w24, #8
     trn2 z8.b, z8.b, z8.b
     sub w25, w11, #1
-    TRELLIS_COEFN_1_SVE_ 0 w25
-    TRELLIS_COEFN_1_SVE_ 1 w11
+    TRELLIS_COEFN_1_SVE_ 0, w25
+    TRELLIS_COEFN_1_SVE_ 1, w11
     b phase2_loop_start
 
 phase2_loop_end:

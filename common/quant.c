@@ -399,7 +399,7 @@ level_run(8)
 level_run(15)
 level_run(16)
 
-#if ARCH_X86_64 || (ARCH_AARCH64 && !SYS_LINUX)
+#if ARCH_X86_64 || ARCH_AARCH64
 #define INIT_TRELLIS(cpu)\
     pf->trellis_cabac_4x4 = x264_trellis_cabac_4x4_##cpu;\
     pf->trellis_cabac_8x8 = x264_trellis_cabac_8x8_##cpu;\
@@ -787,7 +787,7 @@ void x264_quant_init( x264_t *h, uint32_t cpu, x264_quant_function_t *pf )
         pf->coeff_last8 = x264_coeff_last8_arm;
     }
 #endif
-#if HAVE_ARMV6 || (HAVE_AARCH64 && SYS_LINUX)
+#if HAVE_ARMV6 || HAVE_AARCH64
     if( cpu&X264_CPU_NEON )
     {
         pf->quant_2x2_dc   = x264_quant_2x2_dc_neon;

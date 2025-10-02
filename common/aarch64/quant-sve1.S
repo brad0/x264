@@ -35,23 +35,7 @@
 ENABLE_SVE
 ENABLE_SVE2
 
- .global x264_significant_coeff_flag_offset_8x8
- .global x264_cabac_entropy
- .global x264_last_coeff_flag_offset_8x8
- .global x264_cabac_transition
- .global x264_cabac_size_unary
- .global x264_cabac_transition_unary
-
-#if defined(__APPLE__)
-    .const
-#elif defined(_WIN32)
-    .rdata
-#else
-    .section .rodata
-#endif
- .align 3
-
-x264_ue_size_tab:
+const X(ue_size_tab)
     .byte   1,1,3,3,5,5,5,5,7,7,7,7,7,7,7,7
     .byte   9,9,9,9,9,9,9,9,9,9,9,9,9,9,9,9
     .byte   11,11,11,11,11,11,11,11,11,11,11,11,11,11,11,11
@@ -68,6 +52,7 @@ x264_ue_size_tab:
     .byte   15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15
     .byte   15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15
     .byte   15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15
+endconst
 
 .equ CABAC_SHIFT_CONST_VAL, 4 // LAMBDA_BITS 4, CABAC_SIZE_BITS 8 -> 8-4=4
 #define CABAC_SIZE_BITS 8
@@ -115,19 +100,14 @@ x264_ue_size_tab:
 #define TMP_W2         W8
 #define TMP_W3         W18
 #define TMP_W6         W23
-#if defined(__APPLE__) || defined(_WIN32)
-    .text
-#else
-    .section .text
-#endif
+
 .macro  bs_size_ue_big_macro abs_level:req
     //--------------------------------------------------------------------
     // Macro: bs_size_ue_big_macro
     // Re-implements the static inline C function.
     // Input:   W18 - The value 'val' to be encoded.
     //--------------------------------------------------------------------
-    adrp    x22, x264_ue_size_tab
-    add     x22, x22, :lo12:x264_ue_size_tab
+    movrel x22, X(ue_size_tab)
     sub TMP_W6, \abs_level, 15
 
     cmp     \abs_level, #255
@@ -247,9 +227,8 @@ x264_ue_size_tab:
     // Test if any active element of j_3 (p4) is true, controlled by predicate p (sve_p_p) at 32-bit element size
     eor TMP_W2, w14, w24
     ptest P_TRUE, p5.b
-    mov w17, #0                     // Default mask is 0
     mov w18, #0xff00                // Active mask is 0xff00
-    csel w17, w18, w17, ne          // Select mask based on PTEST result
+    csel w17, w18, wzr, ne          // Select mask based on PTEST result
     and TMP_W2, TMP_W2, w17         // Apply the mask
     eor w14, w14, TMP_W2            // Final XOR to update cur_cabac3
     str w14, [x13]                  // Store the final result back to memory
@@ -365,9 +344,8 @@ x264_ue_size_tab:
     // *cur_cabac4 ^= (*cur_cabac4 ^ transition3) & (svptest_any(p, j3) ? 0xff00 : 0);
     // j3 is in P7 (P_j3_final_cond). Original p_true (governing for PTEST) is P_all_true_temp.
     ptest P_TRUE, p7.b    // Test P_j3_final_cond (in P7) under mask P_all_true_temp
-    mov w15, #0
     mov w17, #0xff00
-    csel w15, w17, w15, ne   // W15 = mask (0xff00 or 0)
+    csel w15, w17, wzr, ne   // W15 = mask (0xff00 or 0)
     ldr w18, [x13]     // X13 is ptr_cur_cabac4
     eor w17, w18, w24  // W17 = *cur_cabac4 ^ transition3
     and w17, w17, w15
@@ -544,8 +522,7 @@ x264_ue_size_tab:
 .endm
 
 #define var_DC         W19
-function phase1_compute
-.global phase1_compute
+function trellis_cabac_phase1, export=1
 phase1_compute:
     // Minimal prologue, only called from trellis_cabac_sve
     stp x29, x30, [sp, #-112]!
@@ -557,36 +534,29 @@ phase1_compute:
     stp x27, x28, [sp, #80]
 
 // Load stack arguments into callee-saved registers
-// last_nnz - W0
-// b_ac - W1
-// *quant_coefs - X2
-// *cur_level0123 - X3 -> Z0
-// uint32_t **next_level - X4
-// zigzag - X6
-// unquant_mf - X7
-    ldr CUR_SCORE02_PTR, [x29, #160]  // X25 = cur_score02 (arg 15) ->Z register
+// last_nnz              W0
+// b_ac                  W1
+// *quant_coefs          X2
+// *cur_level0123        X3 -> Z0
+// uint32_t **next_level X4
+// zigzag                X6
+// unquant_mf            X7
     ldr var_DC, [x29, #112]       // W19 = dc (arg 9)
-    ldr x20, [x29, #120]          // X20 = orig_coefs (arg 10), reuse soon
-    ldr w21, [x29, #128]          // W21 = i_psy_trellis (arg 11), reuse soon
-    ldr x22, [x29, #136]          // X22 = fenc_dct (arg 12), reuse soon
-    ldr x23, [x29, #144]          // X23 = coef_weight2 (arg 13), reuse soon
-    ldr x24, [x29, #152]          // X24 = coef_weight1 (arg 14), reuse soon
+    ldp x20, x21, [x29, #120]     // X20 = orig_coefs (arg 10), reuse soon // X21 = i_psy_trellis (arg 11), reuse soon
+    ldp x22, x23, [x29, #136]     // X22 = fenc_dct (arg 12), reuse soon, X23 = coef_weight2 (arg 13), reuse soon
+    ldp x24, CUR_SCORE02_PTR, [x29, #152]          // X24 = coef_weight1 (arg 14), reuse soon
     ldr w26, [x29, #200]          // W26 = num_coefs (arg 20)
     ldr w28, [x29, #208]          // W28 = b_interlaced (arg 21), reuse very soon
     ldr varX_LAMBDA2, [x29, #232] // X27 = lambda2 (arg 24)
 
     // Load addresses of global tables into X9-X12
-    adrp x9, x264_significant_coeff_flag_offset_8x8
-    add x9, x9, :lo12:x264_significant_coeff_flag_offset_8x8
-    adrp x10, x264_cabac_entropy
-    add x10, x10, :lo12:x264_cabac_entropy
-    adrp x11, x264_last_coeff_flag_offset_8x8
-    add x11, x11, :lo12:x264_last_coeff_flag_offset_8x8
-    adrp x12, x264_cabac_transition
-    add x12, x12, :lo12:x264_cabac_transition
+    movrel x9, X264(significant_coeff_flag_offset_8x8)
+    movrel x10, X264(cabac_entropy)
+    movrel x11, X264(last_coeff_flag_offset_8x8)
+    movrel x12, X264(cabac_transition)
 
     // Initial SVE Predicate Setup
-    ptrue  P_TRUE.b
+    ptrue  P_TRUE.b, vl16
     pfalse P_FALSE.b
 
     index z0.s, #0, #1      // Z_idx = {0, 1, 2, 3}
@@ -674,8 +644,7 @@ sig_idx_done_vl128:
     ldr x15, [x29, #216]           // X15 = cabac_state_sig pointer (arg 22)
     ldrb w17, [x15, w14, uxtw]     // W17 (W_sig) = cabac_state_sig[sig_idx(W14)]
     mov w18, w17
-    add x17, x10, w17, uxtw #1     // X17 = addr for x264_cabac_entropy[W_sig]
-    ldrh w15, [x17]                // W15 = W_entropy_val
+    ldrh w15, [x10, w17, uxtw #1]  // W15 = x264_cabac_entropy[W_sig]
     sxtw x15, w15
     dup TMP_Z0.d, x15              // cost_siglast_00_ssd
 
@@ -749,8 +718,7 @@ q_not_zero_dc_not_zero_done:
     cmp w0, #0                     // if (i (W0) != 0)
     b.eq i_is_zero_psy_check_failed_vl128
 
-    add x17, x22, w15, uxtw #1     // X17 = addr for fenc_dct[zzi(W15)]
-    ldrsh x13, [x17]               // X13 = X_fenc_val
+    ldrsh x13, [x22, w15, uxtw #1] // X13 = fenc_dct[zzi(W15)]
     sub x13, x13, x14              // X13 (X_pred_coef) = fenc_val - sign_coef(X14)
     mov z1.d, z2.d
     asr x17, x14, #63              // X17 (X_tmp_sign_bit) from sign_coef(X14)
@@ -760,13 +728,11 @@ q_not_zero_dc_not_zero_done:
     add z1.d, z1.d, z7.d
     abs z1.d, P_TRUE/M, z1.d
 
-    add x17, x23, w15, uxtw #2     // X17 = addr for coef_weight2[zzi(W15)]
-    ldr w14, [x17]
+    ldr w14, [x23, w15, uxtw #2]   // coef_weight2[zzi(W15)]
     dup z7.d, x14
     mul z4.d, z4.d, z7.d
 
-    add x17, x24, w15, uxtw #2     // X17 = addr for coef_weight1[zzi(W15)]
-    ldr w17, [x17]
+    ldr w17, [x24, w15, uxtw #2]   // coef_weight1[zzi(W15)]
     mul w13, w17, w21              // W13 (W_tmp_scalar_mul) = coef_w1 * i_psy_trellis(W21)
     sxtw x13, w13                  // X13 (X_tmp_scalar_mul_64)
     dup z7.d, x13
@@ -781,9 +747,7 @@ i_is_zero_psy_check_failed_vl128:
     b psy_block_done_vl128
 not_dc_block_vl128:
     // W15 still holds zzi
-    add x17, x23, w15, uxtw #2
-    ldr w14, [x17]                 // X14 = coef_weight2[zzi(W1)]
-    uxtw x14, w14
+    ldr w14, [x23, w15, uxtw #2]   // X14 = coef_weight2[zzi(W1)]
     dup z7.d, x14
     mul z4.d, z4.d, z7.d
 psy_block_done_vl128:
@@ -794,8 +758,7 @@ psy_block_done_vl128:
     b.ne i_is_zero_dc_check_failed_vl128
     mov z7.d, z4.d
     asr z10.d, z3.d, #63
-    mov z0.d, z2.d
-    eor z0.d, z0.d, z10.d
+    eor z0.d, z2.d, z10.d
     sub z0.d, z0.d, z10.d
     dup z8.d, #8
     add z0.d, Z0.d, Z8.d
@@ -807,7 +770,6 @@ psy_block_done_vl128:
     // W15 still holds zzi
     add x17, x23, w15, uxtw #2     // addr for coef_weight2[zzi(W15)]
     ldr w17, [x17]                 // Re-load W17 with coef_weight2 value
-    uxtw x17, w17
     dup z8.d, x17
     mul z10.d, z10.d, z8.d
     mov z4.d, z10.d
@@ -900,7 +862,7 @@ cost_siglast_2111_done_vl128:
     cmp x28, #1                    // X28 is q
     b.ne q_not_one_vl128
 
-    umov x13, v4.d[0]              // X_ssd1_lane0
+    fmov x13, d4                   // X_ssd1_lane0
     dup z8.d, x13
     mov TMP_Z1.d, TMP_Z0.d
     add TMP_Z1.d, TMP_Z1.d, z8.d
@@ -954,7 +916,7 @@ q_not_one_vl128:
     ldrh w13, [x10, x8, lsl #1]   // W13 = W_entropy3_q2
     ldr x15, [x29, #192]          // X15 = ptr_entropy012_
     ldr z3, [x15]
-    mov v3.s[3], W13
+    mov v3.s[3], w13
     str z3, [x15]
 
     TRELLIS_COEF1_0_SVE_(0)
@@ -975,9 +937,9 @@ q_not_two_vl128:
     // W24 was W_transition3
     lsr w24, w24, #8
     sub w13, w28, #1              // X13 (X_q_minus_1)
-    TRELLIS_COEFN_0_SVE_ 0, W13
+    TRELLIS_COEFN_0_SVE_ 0, w13
     // X28 was X_q
-    TRELLIS_COEFN_0_SVE_ 1, W28
+    TRELLIS_COEFN_0_SVE_ 1, w28
 
 phase2_switch_and_break_vl128:
     mov w13, #1                   // W13 (switch_to_phase2) = 1
@@ -1036,14 +998,10 @@ endfunc
 
     // score... = svadd_u64_x( p, prev_score..., ssd_either );
     // prev_score vectors are in Z20-Z23
-    mov     SCORE02.d, z20.d
-    add     SCORE02.d, SCORE02.d, SSD_EITHER.d
-    mov     SCORE13.d, z21.d
-    add     SCORE13.d, SCORE13.d, SSD_EITHER.d
-    mov     SCORE46.d, z22.d
-    add     SCORE46.d, SCORE46.d, SSD_EITHER.d
-    mov     SCORE57.d, z23.d
-    add     SCORE57.d, SCORE57.d, SSD_EITHER.d
+    add     SCORE02.d, z20.d, SSD_EITHER.d
+    add     SCORE13.d, z21.d, SSD_EITHER.d
+    add     SCORE46.d, z22.d, SSD_EITHER.d
+    add     SCORE57.d, z23.d, SSD_EITHER.d
 
     // score... = svsra_n_u64(...)
     ldr x27, [x29, #280]
@@ -1066,7 +1024,7 @@ endfunc
     #define P_PREV_J_3 P10
     pfalse p0.b
     uzp1   P_PREV_J_1.d, p0.d, PREV_J13.d
-    ptrue  p0.b
+    ptrue  p0.b, vl16
     bic    P_PREV_J_3.b, p0/z, PREV_J13.b, P_S0.b
 
     // Score updates
@@ -1135,7 +1093,7 @@ endfunc
     trn1    P_J4567.s, P_J46.s, P_J57.s
 
     // CABAC state updates
-    ptrue P_TRUE.b
+    ptrue P_TRUE.b, vl16
     ptest P_TRUE, P_J_2NOT3.b
     ldr   x17, [x29, #232]  // x17 = cur_cabac3
     ldr   w26, [x17]
@@ -1187,8 +1145,7 @@ endfunc
     dup  z12.s, w9
 
     // const svuint32_t size_unary4567 = svld1uh_gather_u32index_u32(p, x264_cabac_size_unary[1], lgt1_state4567);
-    adrp x17, x264_cabac_size_unary
-    add  x17, x17, #:lo12:x264_cabac_size_unary // x17 = &x264_cabac_size_unary
+    movrel x17, X(cabac_size_unary) // x17 = &x264_cabac_size_unary
     add  x17, x17, #256
     ld1h {z3.s}, P_TRUE/z, [x17, z2.s, uxtw #1]
 
@@ -1196,24 +1153,19 @@ endfunc
     ldr  x17, [x29, #288]
     mov  z5.d, z8.d
     ldr  z8, [x17]
-    dup  z28.s, W13
+    dup  z28.s, w13
     add  z8.s, z8.s, z28.s
     add  z8.s, z8.s, z12.s // z8 = tmp0123
 
-    mov  z7.d, z4.d
-    add  z7.s, z7.s, z28.s
+    add  z7.s, z4.s, z28.s
     add  z7.s, z7.s, z3.s  // z7 = tmp4567
 
     // score = nodes_prev->score[j] + ssd;
     // prev_score vectors are in Z20-Z23
-    mov  SCORE02.d, Z20.d
-    add  SCORE02.d, SCORE02.d, SSD_EITHER.d
-    mov  SCORE13.d, Z21.d
-    add  SCORE13.d, SCORE13.d, SSD_EITHER.d
-    mov  SCORE46.d, Z22.d
-    add  SCORE46.d, SCORE46.d, SSD_EITHER.d
-    mov  SCORE57.d, Z23.d
-    add  SCORE57.d, SCORE57.d, SSD_EITHER.d
+    add  SCORE02.d, z20.d, SSD_EITHER.d
+    add  SCORE13.d, z21.d, SSD_EITHER.d
+    add  SCORE46.d, z22.d, SSD_EITHER.d
+    add  SCORE57.d, z23.d, SSD_EITHER.d
 
     // score += f8_bits * lambda2 >> ( CABAC_SIZE_BITS - LAMBDA_BITS );
     ldr x27, [x29, #280]
@@ -1269,7 +1221,7 @@ endfunc
     mov    p0.b, p11.b
     cmphi  p8.d, p0/z, z26.d, z8.d
     umin   z26.d, p0/m, z26.d, z8.d      // j35
-    ptrue  P_TRUE.b // restored clobbered P_TRUE
+    ptrue  P_TRUE.b, vl16 // restored clobbered P_TRUE
 
     str    z26, [x10]
 
@@ -1296,8 +1248,7 @@ endfunc
 
     // Handle transition_unary updates
     // Assumes x12 holds base of &x264_cabac_transition_unary[1][-2]
-    adrp x17, x264_cabac_transition_unary
-    add  x17, x17, :lo12:x264_cabac_transition_unary
+    movrel x17, X(cabac_transition_unary)
     add  x17, x17, #126 // 126 = index [1][-2]
     mov  p7.b, p14.b
 
@@ -1307,11 +1258,11 @@ endfunc
     trn1        p0.h, P_FALSE.h, p14.h
     ld1w z3.s,  p7/z, [x17, z2.s, uxtw] // z3 = transition_unary__67
     sel         z12.b, p0, z3.b, z12.b
-    ptrue p0.b // restore P0
+    ptrue p0.b, vl16 // restore P0
 
     b           .L_endif_dc
 .L_else_dc:
-add z2.s, P_S3/m, z2.s, z1.s
+    add z2.s, P_S3/m, z2.s, z1.s
     ld1w z3.s, p7/z, [x17, z2.s, uxtw] // z3 = transition_unary__67
     mov z24.s, #0xff0000
     dup z8.s,  #0
@@ -1384,8 +1335,7 @@ add z2.s, P_S3/m, z2.s, z1.s
     ldrh w9, [x17, x27]
     dup  z12.s, w9                     // z12 = size_unary0123
 
-    adrp x17, x264_cabac_size_unary
-    add  x17, x17, #:lo12:x264_cabac_size_unary // x17 = &x264_cabac_size_unary
+    movrel x17, X(cabac_size_unary)
     // const svuint32_t size_unary4567 = svld1uh_gather_...
     add  x17, x17, x27
     ld1h {z3.s}, P_TRUE/z, [x17, z2.s, uxtw #1]   // Perform a standard scalar load from base + (index * 2)
@@ -1399,19 +1349,14 @@ add z2.s, P_S3/m, z2.s, z1.s
     add  z8.s, z8.s, z28.s
     add  z8.s, z8.s, z12.s  // z6 = tmp0123
 
-    mov  z7.d, z4.d
-    add  z7.s, z7.s, z28.s
+    add  z7.s, z4.s, z28.s
     add  z7.s, z7.s, z3.s   // z7 = tmp4567
 
     // Score calculation: score = prev_score + ssd
-    mov SCORE02.d, z20.d
-    add SCORE02.d, SCORE02.d, SSD_EITHER.d // score02
-    mov SCORE13.d, z21.d
-    add SCORE13.d, SCORE13.d, SSD_EITHER.d // score13
-    mov SCORE46.d, z22.d
-    add SCORE46.d, SCORE46.d, SSD_EITHER.d // score46
-    mov SCORE57.d, z23.d
-    add SCORE57.d, SCORE57.d, SSD_EITHER.d // score57
+    add SCORE02.d, z20.d, SSD_EITHER.d // score02
+    add SCORE13.d, z21.d, SSD_EITHER.d // score13
+    add SCORE46.d, z22.d, SSD_EITHER.d // score46
+    add SCORE57.d, z23.d, SSD_EITHER.d // score57
 
     // score += f8_bits * lambda2 >> shift
     ldr x27, [x29, #280]
@@ -1483,7 +1428,7 @@ add z2.s, P_S3/m, z2.s, z1.s
     mov    p0.b, p11.b                    // p8 = j35
     cmphi  p8.d, p0/z, z26.d, z8.d       // j35 = score35 < *cur_score46
     umin   z26.d, p0/m, z26.d, z8.d
-    ptrue  P_TRUE.b // restored clobbered P_TRUE
+    ptrue  P_TRUE.b, vl16 // restored clobbered P_TRUE
 
     str    z26, [x10]
 
@@ -1510,8 +1455,7 @@ add z2.s, P_S3/m, z2.s, z1.s
 // new_cabac4567 = svsel(j4567, transition4567, prev_cabac4567)
     sel  z12.b, p13, z5.b, z11.b // z12 = new_cabac4567
 
-    adrp x17, x264_cabac_transition_unary
-    add  x17, x17, :lo12:x264_cabac_transition_unary
+    movrel x17, X(cabac_transition_unary)
     lsl  x8, x26, #7    // base + prefix * 128
     sub  x8, x8, #2     // base[prefix][-2]
     add  x17, x17, x8
@@ -1520,15 +1464,15 @@ add z2.s, P_S3/m, z2.s, z1.s
     cmp    var_DC, #0
     beq    .L_ELSE_DC_\@
     // if(dc)
-    trn1   p0.h, P_FALSE.h, p14.h             // p12 = j_____6_7
+    trn1   p0.h, P_FALSE.h, p14.h      // p12 = j_____6_7
     ld1w z3.s, p7/z, [x17, z2.s, uxtw] // z3 = transition_unary__67
     sel    z12.b, p0, z3.b, z12.b
-    ptrue p0.b // restore P0 = ptrue again
+    ptrue p0.b, vl16 // restore P0 = ptrue again
     b      .L_END_DC_IF_\@
 .L_ELSE_DC_\@:
-add z2.s, P_S3/m, z2.s, z1.s
+    add z2.s, P_S3/m, z2.s, z1.s
     ld1w z3.s, p7/z, [x17, z2.s, uxtw] // z3 = transition_unary__67
-sub z2.s, P_S3/m, z2.s, z1.s
+    sub z2.s, P_S3/m, z2.s, z1.s
     mov z24.s, #0xff0000
     dup z8.s,  #0
     mov z8.s, p14/m, z24.s
@@ -1578,8 +1522,7 @@ sub z2.s, P_S3/m, z2.s, z1.s
 #define var_I_PSY_TRELLIS W21
 #define LEVEL_STATE6767   Z10 // duplicated level state 6
 #define CUR_SCORE57       Z31 // initial max score for levels 5,7
-.global phase2_compute
-phase2_compute:
+function trellis_cabac_phase2, export=1
     stp x29, x30, [sp, #-160]!
     mov x29, sp
     stp x19, x20, [sp, #16]
@@ -1596,22 +1539,19 @@ phase2_compute:
     // Load stack arguments into callee-saved registers
     // Args in GPRs: W0=i, X1=b_ac, X2=quant_coefs, X3=PTR_CUR_LEVEL0123,
     // X4=next_level, X5=lev_used0123, X6=zigzag, X7=unquant_mf
-    ldr x25,      [x29, #208] // cur_score02_ptr
-    ldr x13,      [x29, #216] // cur_score13_ptr
+    ldp x25, x13, [x29, #208] // cur_score02_ptr, cur_score13_ptr
     ldr w12,      [x29, #336] // switched
     ldr w26,      [x29, #248] // num_coefs
     ldr var_DC,   [x29, #160] //
-    ptrue P_TRUE.b
+    ptrue P_TRUE.b, vl16
     pfalse P_FALSE.b
     cbz w12, .phase2_else_clause
 
     ldr x12,      [x29, #168] // orig_coefs
     ldr var_I_PSY_TRELLIS, [x29, #176] // arg 11
-    ldr x22,      [x29, #184] // fenc_dct
-    ldr x23,      [x29, #192] // coef_weight2
+    ldp x22, x23, [x29, #184] // fenc_dct, coef_weight2
     ldr x24,      [x29, #200] // coef_weight1
-    ldr x14,      [x29, #224] // cur_score46_ptr
-    ldr x15,      [x29, #232] // cur_cabac3_ptr
+    ldp x14, x15, [x29, #224] // cur_score46_ptr, cur_cabac3_ptr
     ldr x16,      [x29, #240] // entropy012_ptr
     // b_interlaced           // 256
     ldr x17,      [x29, #264] // arg 21: cabac_state_sig_ptr
@@ -1619,23 +1559,19 @@ phase2_compute:
     ldr varX_LAMBDA2, [x29, #280]
     // entropy012_xor         // 288
     // level_state0489        // 296
-    ldr x10,      [x29, #304] // cur_cabac4_ptr
-    ldr x9,       [x29, #312] // cur_level4567_ptr
+    ldp x10, x9,  [x29, #304] // cur_cabac4_ptr, cur_level4567_ptr
     // cabac_size_unary_5     // 320
     // level_state01234567    // 328
     // next                   // 344
     // dct                    // 352
 
     // Load global table addresses
-    adrp x20, x264_cabac_entropy
-    add  x20, x20, :lo12:x264_cabac_entropy    // X20 = entropy table base
-    adrp x21, x264_cabac_transition
-    add  x21, x21, :lo12:x264_cabac_transition // X21 = transition table base
+    movrel x20, X264(cabac_entropy)
+    movrel x21, X264(cabac_transition)
 
     // const svuint32_t level_state6767 = ...
     ldr x8, [x29, #328]        // level_state01234567 (arg 30)
     lsr x8, x8, #48            // Shift right to get state7|state6 in lower 16 bits
-    and w8, w8, #0xFFFF        // Isolate state6 (the low byte of the pair)
     mov LEVEL_STATE6767.h, w8  // Duplicate state6 into all 32-bit lanes
     uunpklo LEVEL_STATE6767.h, LEVEL_STATE6767.b
     uunpklo LEVEL_STATE6767.s, LEVEL_STATE6767.h
@@ -1671,7 +1607,7 @@ phase2_loop_start:
     cmp w0, w1
     b.lt phase2_loop_end
     // SVE Predicate and initial state setup
-    ptrue P_TRUE.b
+    ptrue P_TRUE.b, vl16
     pfalse P_FALSE.b
     mov w8, #1
     whilelo P_S0.s, wzr, w8       // P_S0 = {T,F,F,F}
@@ -1788,7 +1724,6 @@ psy_check_failed_p2:
 not_dc_block_p2:
     ldr  x23, [x29, #192]         // arg 12: coef_weight2
     ldr  w15, [x23, w12, uxtw #2] // coef_weight2[zzi]
-    uxtw x15, w15
     dup  z15.d, x15
     mul  z14.d, z14.d, z15.d
 
@@ -1830,8 +1765,7 @@ psy_block_done_p2:
     // Get transition values
     lsl  x24, x18, #1
     sub  x24, x24, #1
-    adrp x21, x264_cabac_transition
-    add  x21, x21, :lo12:x264_cabac_transition
+    movrel x21, X264(cabac_transition)
     ldr  w24, [x21, x24]                        // transition3
     ld1h {z8.s}, P_TRUE/z, [x21, z7.s, uxtw #1] // transition4567
 
@@ -1845,8 +1779,7 @@ psy_block_done_p2:
 
     // Case 1: !dc && num_coefs == 64
     // sig_idx = x264_significant_coeff_flag_offset_8x8[b_interlaced][i];
-    adrp x27, x264_significant_coeff_flag_offset_8x8
-    add  x27, x27, :lo12:x264_significant_coeff_flag_offset_8x8 // X18 = sig offset table base
+    movrel x27, X264(significant_coeff_flag_offset_8x8)
     mov  w15, #64             // 64 coefficients per row in the table
     ldr  w17, [x29, #256]
     mul  w17, w17, w15        // row_offset = b_interlaced (W11) * 64
@@ -1880,8 +1813,7 @@ psy_block_done_p2:
     b.ne .final_else_case_last_idx_p2
 
     // Case 1: !dc && num_coefs == 64
-    adrp x28, x264_last_coeff_flag_offset_8x8
-    add  x28, x28, :lo12:x264_last_coeff_flag_offset_8x8
+    movrel x28, X264(last_coeff_flag_offset_8x8)
     ldrb w13, [x28, w0, uxtw]     // last_idx = table[i]
     b    .last_idx_done_p2
 
@@ -1938,7 +1870,7 @@ q_is_one_p2:
     mov TMP_Z2.d, varX_LAMBDA2
     mul z0.d, Z0.d, TMP_Z2.d
     lsr z0.d, P_TRUE/m, Z0.d, #CABAC_SHIFT_CONST_VAL
-    umov x12, v14.d[0]
+    fmov x12, d14
     mov TMP_Z2.d, x12
     add z0.d,  z0.d, TMP_Z2.d
     sub z14.d, z14.d, z0.d

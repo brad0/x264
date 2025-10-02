@@ -705,7 +705,7 @@ int quant_trellis_cabac( x264_t *h, dctcoef *dct,
         return !!dct[0];
     }
 
-#if HAVE_MMX && ARCH_X86_64 || (HAVE_SVE && ARCH_AARCH64 && SYS_LINUX)
+#if HAVE_MMX && ARCH_X86_64 || (HAVE_SVE && ARCH_AARCH64)
     uint64_t level_state0;
     memcpy( &level_state0, cabac_state, sizeof(uint64_t) );
     uint16_t level_state1;

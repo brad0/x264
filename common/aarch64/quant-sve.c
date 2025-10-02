@@ -33,25 +33,27 @@ extern uint16_t x264_cabac_size_unary[15][128];
 
 #define SIGN32(x,y) (((x)^((y) >> 31))-((y) >> 31))
 
-extern int phase1_compute(const int last_nnz, const int b_ac, const dctcoef *restrict const quant_coefs, uint32_t *cur_level0123,
-        uint32_t **restrict next_level, uint32_t *lev_used0123, const uint8_t *restrict const zigzag,
-        const int *restrict const unquant_mf, const int dc, const dctcoef *restrict const orig_coefs, const int i_psy_trellis,
-        const dctcoef *const fenc_dct, const uint32_t *restrict const coef_weight2, const uint32_t *restrict const coef_weight1,
+#define x264_trellis_cabac_phase1 x264_template(trellis_cabac_phase1)
+extern int x264_trellis_cabac_phase1(const int last_nnz, const int b_ac, const dctcoef *const quant_coefs, uint32_t *cur_level0123,
+        uint32_t **next_level, uint32_t *lev_used0123, const uint8_t *const zigzag,
+        const int *const unquant_mf, const int dc, const dctcoef *const orig_coefs, const int i_psy_trellis,
+        const dctcoef *const fenc_dct, const uint32_t *const coef_weight2, const uint32_t *const coef_weight1,
         uint64_t *cur_score02, uint64_t *cur_score13, uint64_t *cur_score46, uint32_t *cur_cabac3, uint32_t *entropy012_,
-        const int num_coefs, const int b_interlaced, const uint8_t *restrict const cabac_state_sig,
-        const uint8_t *restrict const cabac_state_last, const uint64_t lambda2,
+        const int num_coefs, const int b_interlaced, const uint8_t *const cabac_state_sig,
+        const uint8_t *const cabac_state_last, const uint64_t lambda2,
         uint32_t *entropy012_xor, const uint32_t level_state0489, uint32_t *cur_cabac4, uint32_t *cur_level4567,
-        const uint16_t *restrict const cabac_size_unary_5, const uint64_t level_state01234567, int *phase2_compute_needed);
+        const uint16_t *const cabac_size_unary_5, const uint64_t level_state01234567, int *phase2_compute_needed);
 
-extern uint32_t phase2_compute(int i, const int b_ac, const dctcoef *restrict const quant_coefs, uint32_t *cur_level0123,
-        uint32_t **restrict next_level, uint32_t *lev_used0123, const uint8_t *restrict const zigzag,
-        const int *restrict const unquant_mf, const int dc, const dctcoef *restrict const orig_coefs,
-        const int i_psy_trellis, const dctcoef *const fenc_dct, const uint32_t *restrict const coef_weight2,
-        const uint32_t *restrict const coef_weight1, uint64_t *cur_score02, uint64_t *cur_score13, uint64_t *cur_score46,
+#define x264_trellis_cabac_phase2 x264_template(trellis_cabac_phase2)
+extern uint32_t x264_trellis_cabac_phase2(int i, const int b_ac, const dctcoef *const quant_coefs, uint32_t *cur_level0123,
+        uint32_t **next_level, uint32_t *lev_used0123, const uint8_t *const zigzag,
+        const int *const unquant_mf, const int dc, const dctcoef *const orig_coefs,
+        const int i_psy_trellis, const dctcoef *const fenc_dct, const uint32_t *const coef_weight2,
+        const uint32_t *const coef_weight1, uint64_t *cur_score02, uint64_t *cur_score13, uint64_t *cur_score46,
         uint32_t *cur_cabac3, uint32_t *entropy012_, const int num_coefs, const int b_interlaced,
-        const uint8_t *restrict const cabac_state_sig,const uint8_t *restrict const cabac_state_last, const uint64_t lambda2,
+        const uint8_t *const cabac_state_sig,const uint8_t *const cabac_state_last, const uint64_t lambda2,
         uint32_t *entropy012_xor,const uint32_t level_state0489,uint32_t *cur_cabac4, uint32_t *cur_level4567,
-        const uint16_t *restrict const cabac_size_unary_5, const uint64_t level_state01234567, const int switched, int *leveli, dctcoef *dcti, const int last_nnz, uint32_t *level_tree);
+        const uint16_t *const cabac_size_unary_5, const uint64_t level_state01234567, const int switched, int *leveli, dctcoef *dcti, const int last_nnz, uint32_t *level_tree);
 
 int trellis_cabac_sve(
     const int *restrict const unquant_mf, const uint8_t *restrict const zigzag,
@@ -88,7 +90,7 @@ int trellis_cabac_sve(
     uint64_t cur_score02[2], cur_score13[2], cur_score46[2];
     uint32_t entropy012_[4], entropy012_xor[4], lev_used0123[4], cur_level0123[4], cur_level4567[4];
     int phase2_compute_needed = 0;
-    int i = phase1_compute(last_nnz, b_ac, quant_coefs, cur_level0123,
+    int i = x264_trellis_cabac_phase1(last_nnz, b_ac, quant_coefs, cur_level0123,
         &next_level, lev_used0123, zigzag, unquant_mf, dc, orig_coefs, i_psy_trellis,
         fenc_dct, coef_weight2, coef_weight1, cur_score02, cur_score13, cur_score46,
         &cur_cabac3, entropy012_, num_coefs, b_interlaced, cabac_state_sig,
@@ -96,7 +98,7 @@ int trellis_cabac_sve(
         cabac_size_unary_5, level_state01234567, &phase2_compute_needed);
 
     uint32_t level;
-    if (!phase2_compute(i, b_ac, quant_coefs, cur_level0123, &next_level, lev_used0123, zigzag,
+    if (!x264_trellis_cabac_phase2(i, b_ac, quant_coefs, cur_level0123, &next_level, lev_used0123, zigzag,
          unquant_mf, dc, orig_coefs, i_psy_trellis, fenc_dct, coef_weight2, coef_weight1,
          cur_score02, cur_score13, cur_score46,&cur_cabac3, entropy012_, num_coefs,
          b_interlaced, cabac_state_sig,cabac_state_last, lambda2, entropy012_xor,level_state0489, &cur_cabac4, cur_level4567,

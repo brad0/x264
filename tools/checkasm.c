@@ -314,6 +314,12 @@ void x264_checkasm_stack_clobber( uint64_t clobber, ... );
     x264_checkasm_call(( intptr_t(*)())func, &ok, 0, 0, 0, 0, 0, 0, __VA_ARGS__ ); })
 #elif HAVE_MMX || HAVE_ARMV6
 #define call_a1(func,...) x264_checkasm_call( (intptr_t(*)())func, &ok, __VA_ARGS__ )
+#elif HAVE_RISCV64 && HAVE_RVV
+void x264_checkasm_stack_clobber( uint64_t clobber, ... );
+#define call_a1(func,...) ({ \
+    uint64_t r = (rand() & 0xffff) * 0x0001000100010001ULL; \
+    x264_checkasm_stack_clobber( r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r,r ); /* max_args+8 */ \
+    x264_checkasm_call(( intptr_t(*)())func, &ok, 0, 0, 0, 0, 0, 0, __VA_ARGS__ ); })
 #elif ARCH_LOONGARCH && HAVE_LSX
 void x264_checkasm_stack_clobber( uint64_t clobber, ... );
 #define call_a1(func,...) ({ \

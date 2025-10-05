@@ -569,9 +569,8 @@ phase1_compute:
     mov w13, wzr         // W13 = switched_to_phase2 = 0
     str w13, [sp, #96]   // Save it to stack, will need in the end
     ldr x16, [x4]        // X16 = *next_level (address from X4 which is &next_level)
-    movn x13, #0
-    dup CUR_SCORE13.d, x13
-    dup CUR_SCORE02.d, x13
+    dup CUR_SCORE02.d, #-1
+    dup CUR_SCORE13.d, #-1
     mov x13, #TRELLIS_SCORE_BIAS
     insr CUR_SCORE02.d, x13
     ldr x13, [x29, #168] // cur_score13
@@ -645,7 +644,6 @@ sig_idx_done_vl128:
     ldrb w17, [x15, w14, uxtw]     // W17 (W_sig) = cabac_state_sig[sig_idx(W14)]
     mov w18, w17
     ldrh w15, [x10, w17, uxtw #1]  // W15 = x264_cabac_entropy[W_sig]
-    sxtw x15, w15
     dup TMP_Z0.d, x15              // cost_siglast_00_ssd
 
     dup z7.d, varX_LAMBDA2
@@ -734,7 +732,6 @@ q_not_zero_dc_not_zero_done:
 
     ldr w17, [x24, w15, uxtw #2]   // coef_weight1[zzi(W15)]
     mul w13, w17, w21              // W13 (W_tmp_scalar_mul) = coef_w1 * i_psy_trellis(W21)
-    sxtw x13, w13                  // X13 (X_tmp_scalar_mul_64)
     dup z7.d, x13
     mls z4.d, P_TRUE/M, z1.d, z7.d
     B psy_block_done_vl128
@@ -757,7 +754,7 @@ psy_block_done_vl128:
     cmp W0, #0                     // if (i (W0) == 0)
     b.ne i_is_zero_dc_check_failed_vl128
     mov z7.d, z4.d
-    asr z10.d, z3.d, #63
+    cmlt v10.2d, v3.2d, #0
     eor z0.d, z2.d, z10.d
     sub z0.d, z0.d, z10.d
     dup z8.d, #8
@@ -892,8 +889,7 @@ cost_siglast_2111_done_vl128:
     B loop_continue_vl128
 
 q_not_one_vl128:
-    movn x14, #0                  // X_trellis_max = -1
-    dup z0.d, x14
+    dup z0.d, #-1
     mov CUR_SCORE02.d, z0.d
     str CUR_SCORE02, [CUR_SCORE02_PTR] // ptr_cur_score02
     ldr x13, [x29, #168]          // X13 = ptr_cur_score13
@@ -1578,8 +1574,7 @@ function trellis_cabac_phase2, export=1
 
     // svuint64_t cur_score57 = ... TRELLIS_SCORE_MAX;
     // TRELLIS_SCORE_MAX is (uint64_t)-1
-    movn x8, #0                // X8 = -1
-    dup CUR_SCORE57.d, x8      // Initialize cur_score57 vector with max score
+    dup CUR_SCORE57.d, #-1      // Initialize cur_score57 vector with max score
 
     // svuint32_t cur_cabac4567 = svdup_u32(cur_cabac4);
     ldr x8, [x29, #304]
@@ -1663,8 +1658,7 @@ q_not_zero_p2:
     cmp  var_DC, #0
     csel x13, xzr, x12, ne   // idx = dc ? 0 : zzi
 
-    ldr w14, [x7, x13, lsl #2]  // W14 = unquant_mf[idx]
-    sxtw x14, w14
+    ldrsw x14, [x7, x13, lsl #2]  // W14 = unquant_mf[idx]
     dup z13.d, x14
     mul z13.d, z13.d, z12.d // unquant_abs_lev
 
@@ -1704,13 +1698,11 @@ dc_shift_done_p2_ssd:
     add z29.d, z29.d, z30.d
     abs z29.d, P_TRUE/m, z29.d
 
-    ldr  w26, [x23, w12, uxtw #2]
-    sxtw x26, w26
+    ldrsw  x26, [x23, w12, uxtw #2]
     dup  z30.d, x26
     mul  z14.d,  z14.d, z30.d
     ldr  w28, [x24, w12, uxtw #2]
     mul  w26, w28, var_I_PSY_TRELLIS
-    sxtw x26, w26
     dup  z30.d, x26
     mls  z14.d, P_TRUE/m, z29.d, z30.d
 
@@ -1891,9 +1883,8 @@ q_is_one_p2:
     b phase2_loop_start
 
 q_gt_one_p2:
-    movn x12, #0
-    dup z0.d, x12
-    dup CUR_SCORE02.d, x12
+    dup z0.d, #-1
+    dup CUR_SCORE02.d, #-1
     ldr CUR_SCORE02_PTR, [x29, #208]
     str z0, [CUR_SCORE02_PTR] // cur_score02 = MAX
     ldr x14, [x29, #216]

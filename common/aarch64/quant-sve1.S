@@ -108,20 +108,18 @@ endconst
     // Input:   W18 - The value 'val' to be encoded.
     //--------------------------------------------------------------------
     movrel x22, X(ue_size_tab)
-    sub TMP_W6, \abs_level, 15
+    sub TMP_W6, \abs_level, 14
 
     cmp     \abs_level, #255
     b.ge    .L_val_is_large_\@
 
 .L_val_is_small_\@:
     // Path for val < 255
-    add     TMP_W6, TMP_W6, #1
     ldrb    TMP_W3, [x22, TMP_W6, uxtw]
     b       .L_val_lookup_done_\@
 
 .L_val_is_large_\@:
     // Path for val >= 255
-    add     TMP_W6, TMP_W6, #1
     lsr     TMP_W6, TMP_W6, #8
     ldrb    TMP_W3, [x22, TMP_W6, uxtw]
     add     TMP_W3, TMP_W3, #16
@@ -178,26 +176,26 @@ endconst
     bic p4.b, P_TRUE/Z, p4.b, P_S0.b // sve_temp2_p = prev_j_3
 
     // j02 = prev_j02;
-    mov p7.b, p5.b // j02 is correctly initialized with prev_j02
     .if \stage
         // j02 = svcmplt_u64( j02, score02, cur_score13 );
         cmphi p7.d, p5/z, CUR_SCORE13.d, SCORE02.d
+    .else
+        mov p7.b, p5.b // j02 is correctly initialized with prev_j02
     .endif
     // cur_score13 = svmin_u64_m( prev_j02, cur_score13, score02 );
     umin CUR_SCORE13.d, p5/m, CUR_SCORE13.d, SCORE02.d
 
     // j_1 = prev_j_1;
-    mov p1.b, p6.b
     .if \stage
         // j_1 = svcmplt_u64( j_1, score11, cur_score02 );
         cmphi p1.d, p6/z, CUR_SCORE02.d, SCORE11.d
+    .else
+        mov p1.b, p6.b
     .endif
     // cur_score02 = svmin_u64_m( prev_j_1, cur_score02, score11 );
     umin CUR_SCORE02.d, p6/m, CUR_SCORE02.d, SCORE11.d
     str CUR_SCORE02, [CUR_SCORE02_PTR]  // Store *cur_score02
 
-    // j_3 = prev_j_3;
-    mov p5.b, p4.b // p4.d = j_3
     // j_3 = svcmplt_u64( j_3, score13, cur_score13 );
     cmphi p5.d, p4/z, CUR_SCORE13.d, SCORE13.d
     // cur_score13 = svmin_u64_m( prev_j_3, cur_score13, score13 );
@@ -298,8 +296,7 @@ endconst
     dup z1.d, SCORE13.d[1]         // Z1.D (score33) = score13[1]
 
     // Predicate logic preparation
-    mov  p9.b, p4.b                // Save prev_j13_input into P9
-    and  p4.b, P_S0/Z, p4.b, p9.b  // P4 = s0 && prev_j13_input (P_j1_for_cmplt)
+    mov  p4.b, P_S0/Z, p4.b        // P4 = s0 && prev_j13_input (P_j1_for_cmplt)
     uzp2 p2.d, P5.d, P_FALSE.d     // P2 = uzp2(prev_j02_input(P2), pf) (P_j2_for_cmplt)
 
     // Load *cur_score46 into Z4.D
@@ -360,7 +357,6 @@ endconst
     // *cur_level4567 = svsel_u32( j1, svdup_lane_u32(*lev_used0123, 1), *cur_level4567 );
     // j1 is in P4 (P_j1_final_cond).
     ldr z0, [x13]  // Z0.S = current *cur_level4567
-    mov  z1.d, LEV_USED0123.d
     dup  z1.s, LEV_USED0123.s[1]  // Z1.S = dup_lane(*lev_used0123, 1)
     sel  z0.s, p9, z1.s, z0.s     // Select under j1 (P4)
     str z0, [x13]
@@ -368,7 +364,6 @@ endconst
     // *cur_level4567 = svsel_u32( j2, svdup_lane_u32(*lev_used0123, 2), *cur_level4567 );
     // j2 is in P2 (P_j2_final_cond).
     ldr z0, [x13]
-    mov z1.d, LEV_USED0123.d
     dup z1.s, LEV_USED0123.s[2]
     sel z0.s, p2, z1.s, z0.s       // Select under j2 (P2)
     str z0, [x13]
@@ -376,10 +371,9 @@ endconst
     // *cur_level4567 = svsel_u32( j3, svdup_lane_u32(*lev_used0123, 3), *cur_level4567 );
     // j3 is in P0 (P_j3_final_cond).
     ldr z0, [x13]
-    mov z1.d, LEV_USED0123.d
     dup z1.s, LEV_USED0123.s[3]
     sel z0.s, p7, z1.s, z0.s       // Select under j3 (P7)
-    str z0, [x13]
+    str q0, [x13]
 
     // *lev_used0123 = svadd_n_u32_x( p, *lev_used0123, 4 );
     // *lev_used0123 value is in Z7.S. p is P_all_true_temp.
@@ -414,9 +408,8 @@ endconst
 
 .L_SKIP_SUFFIX_CALC_\@:
     // tmp0123 = svadd(cost_siglast_2111, suffix_cost);
-    dup  z3.s, TMP_W3
-    mov  z31.d, z6.d
-    add  z31.s,  z31.s, z3.s
+    dup  z31.s, TMP_W3
+    add  z31.s,  z31.s, z6.s
 
     // tmp0123 += *entropy012_xor;
     ldr x13, [x29, #240]           // X13 = ptr_entropy012_xor
@@ -427,8 +420,7 @@ endconst
     ubfiz  x8, x8, #8, #32
     ldr  x17, [x29, #272]
     add  x8, x17, TMP_W2, uxtw
-    ldrh  TMP_W3, [x8]
-    dup  z3.s, TMP_W3
+    ld1rsh  z3.s, P_TRUE/z, [x8]
     add  z31.s, z31.s, z3.s
 
     // score02 = prev_score02 + ssd_bot; score13 = prev_score13 + ssd_top;
@@ -448,7 +440,7 @@ endconst
     dup  z27.d, SCORE13.d[1]
 
     // Predicate generation
-    and  p2.b, P_TRUE/Z, P_S0.b, p4.b
+    mov  p2.b, P_S0/z, p4.b
     uzp2 p6.d, p5.d, P_FALSE.d
     uzp2 p7.d, P4.d, P_FALSE.d
 
@@ -457,9 +449,10 @@ endconst
     ldr z26, [x10]       // z26 = cur_score46
 
     // Comparisons and updates for j=0,1,2,3
-    mov  p8.b, P_S0.b    // p8 = j0 = s0
     .if \stage
         cmphi p8.d, P_S0/Z, z26.d, SCORE02.d
+    .else
+        mov  p8.b, P_S0.b    // p8 = j0 = s0
     .endif
     umin z26.d, P_S0/M, z26.d, SCORE02.d
 
@@ -472,13 +465,13 @@ endconst
     cmphi p11.d, p7/z, z26.d, z27.d
     umin  z26.d, p7/m, z26.d, z27.d
 
-    str z26, [x10]          // Store updated cur_score46
+    str q26, [x10]          // Store updated cur_score46
 
     // CABAC state update
     ldr  x10, [x29, #256]   // X10 = ptr_cur_cabac4
-    ldr  TMP_W3, [x10]      // w18 = cur_cabac4
     ldr  w15, [x29, #248]   // X15 = ptr_cur_level4567
     .if \stage
+        ldr  TMP_W3, [x10]      // w18 = cur_cabac4
         orr p12.b, P_TRUE/Z, p8.b, p9.b   // p12 = j0 | j1
         orr p12.b, P_TRUE/Z, p12.b, p10.b // p12 = j0|j1 | j2
         orr p12.b, P_TRUE/Z, p12.b, p11.b // p12 = j0|j1|j2 | j3
@@ -523,7 +516,6 @@ endconst
 
 #define var_DC         W19
 function trellis_cabac_phase1, export=1
-phase1_compute:
     // Minimal prologue, only called from trellis_cabac_sve
     stp x29, x30, [sp, #-112]!
     mov x29, sp
@@ -560,24 +552,21 @@ phase1_compute:
     pfalse P_FALSE.b
 
     index z0.s, #0, #1      // Z_idx = {0, 1, 2, 3}
-    mov   w13, #2
-    mov   z1.s, w13
+    dup   z1.s, #2
     cmpeq p2.s, P_TRUE/Z, z0.s, z1.s // P2 = (Z_idx == 2)
     ptrue p4.s, vl3
 
     // W0 = last_nnz (loop counter 'i')
-    mov w13, wzr         // W13 = switched_to_phase2 = 0
-    str w13, [sp, #96]   // Save it to stack, will need in the end
+    str wzr, [sp, #96]   // Save switched_to_phase2 to stack, will need in the end
     ldr x16, [x4]        // X16 = *next_level (address from X4 which is &next_level)
     dup CUR_SCORE02.d, #-1
     dup CUR_SCORE13.d, #-1
     mov x13, #TRELLIS_SCORE_BIAS
     insr CUR_SCORE02.d, x13
-    ldr x13, [x29, #168] // cur_score13
+    ldp x13, x14, [x29, #168] // cur_score13
     str CUR_SCORE13, [x13]
     str CUR_SCORE02, [CUR_SCORE02_PTR]
-    ldr x13, [x29, #176] // cur_score46
-    str CUR_SCORE13, [x13]
+    str CUR_SCORE13, [x14]
 
     // entropy012_ = svld1uh_gather_u32index_u32(s012, cabac_entropy, level_state1234)
     ldr x13, [x29, #280] // level_state01234567
@@ -601,8 +590,7 @@ phase1_compute:
     index z3.s, #8, #1
     str z3, [x5] // lev_used0123 init
 
-    dup z3.s, #0
-    str z3, [x3] //cur_level0123
+    stp xzr, xzr, [x3] //cur_level0123
 
     ldr x13, [x29, #264]
     str z3, [x13] //cur_level0123
@@ -641,9 +629,8 @@ not_8_coeffs_dc_sig_idx_vl128:
 sig_idx_done_vl128:
     // W14 now holds sig_idx
     ldr x15, [x29, #216]           // X15 = cabac_state_sig pointer (arg 22)
-    ldrb w17, [x15, w14, uxtw]     // W17 (W_sig) = cabac_state_sig[sig_idx(W14)]
-    mov w18, w17
-    ldrh w15, [x10, w17, uxtw #1]  // W15 = x264_cabac_entropy[W_sig]
+    ldrb w18, [x15, w14, uxtw]     // W17 (W_sig) = cabac_state_sig[sig_idx(W14)]
+    ldrh w15, [x10, w18, uxtw #1]  // W15 = x264_cabac_entropy[W_sig]
     dup TMP_Z0.d, x15              // cost_siglast_00_ssd
 
     dup z7.d, varX_LAMBDA2
@@ -1400,16 +1387,18 @@ endfunc
     // Score comparisons and updates
     ldr    z26, [x10]           // z26 = *cur_score46
 
-    mov    p12.b, p8.b                    // p12 = j1
     mov p0.b, p8.b // clobbered P_TRUE, using p0 as temp
     .if \stage
       cmphi  p12.d, p0/z, z26.d, SCORE13.d    // j1 = score13 < *cur_score46
+    .else
+      mov    p12.b, p8.b                    // p12 = j1
     .endif
     umin   z26.d, p0/m, z26.d, SCORE13.d
 
-    mov    p13.b, p7.b                    // p13 = j46
     .if \stage
       cmphi  p13.d, p7/z, z31.d, SCORE46.d    // j46 = score46 < cur_score57
+    .else
+      mov    p13.b, p7.b                    // p13 = j46
     .endif
     umin   z31.d, p7/m, z31.d, SCORE46.d
 

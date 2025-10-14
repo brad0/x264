@@ -92,4 +92,22 @@ int x264_coeff_level_run16_neon( dctcoef *, x264_run_level_t * );
 #define x264_denoise_dct_neon x264_template(denoise_dct_neon)
 void x264_denoise_dct_neon( dctcoef *, uint32_t *, udctcoef *, int );
 
+#define x264_trellis_cabac_4x4_sve x264_template(trellis_cabac_4x4_sve)
+int x264_trellis_cabac_4x4_sve ( TRELLIS_PARAMS, int b_ac );
+
+#define x264_trellis_cabac_8x8_sve x264_template(trellis_cabac_8x8_sve)
+int x264_trellis_cabac_8x8_sve ( TRELLIS_PARAMS, int b_interlaced );
+
+#define x264_trellis_cabac_4x4_psy_sve x264_template(trellis_cabac_4x4_psy_sve)
+int x264_trellis_cabac_4x4_psy_sve ( TRELLIS_PARAMS, int b_ac, dctcoef *fenc_dct, int i_psy_trellis );
+
+#define x264_trellis_cabac_8x8_psy_sve x264_template(trellis_cabac_8x8_psy_sve)
+int x264_trellis_cabac_8x8_psy_sve ( TRELLIS_PARAMS, int b_interlaced, dctcoef *fenc_dct, int i_psy_trellis );
+
+#define x264_trellis_cabac_dc_sve x264_template(trellis_cabac_dc_sve)
+int x264_trellis_cabac_dc_sve ( TRELLIS_PARAMS, int i_coefs );
+
+#define x264_trellis_cabac_chroma_422_dc_sve x264_template(trellis_cabac_chroma_422_dc_sve)
+int x264_trellis_cabac_chroma_422_dc_sve ( TRELLIS_PARAMS );
+
 #endif

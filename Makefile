@@ -177,7 +177,8 @@ SRCASM_X += common/aarch64/dct-a-sve.S \
             common/aarch64/pixel-a-sve.S
 endif
 ifneq ($(findstring HAVE_SVE2 1, $(CONFIG)),)
-SRCASM_X += common/aarch64/dct-a-sve2.S
+SRCASM_X += common/aarch64/dct-a-sve2.S common/aarch64/quant-sve1.S
+SRCS_X   += common/aarch64/quant-sve.c
 endif
 SRCS_X   += common/aarch64/asm-offsets.c \
             common/aarch64/mc-c.c \

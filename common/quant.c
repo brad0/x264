@@ -399,7 +399,7 @@ level_run(8)
 level_run(15)
 level_run(16)
 
-#if ARCH_X86_64
+#if ARCH_X86_64 || ARCH_AARCH64
 #define INIT_TRELLIS(cpu)\
     pf->trellis_cabac_4x4 = x264_trellis_cabac_4x4_##cpu;\
     pf->trellis_cabac_8x8 = x264_trellis_cabac_8x8_##cpu;\
@@ -805,6 +805,10 @@ void x264_quant_init( x264_t *h, uint32_t cpu, x264_quant_function_t *pf )
         pf->decimate_score15 = x264_decimate_score15_neon;
         pf->decimate_score16 = x264_decimate_score16_neon;
         pf->decimate_score64 = x264_decimate_score64_neon;
+    }
+    if( cpu&X264_CPU_SVE )
+    {
+        INIT_TRELLIS( sve );
     }
 #endif
 #if HAVE_AARCH64
